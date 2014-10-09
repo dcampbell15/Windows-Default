@@ -1,0 +1,162 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. LAB2.
+       AUTHOR.  DEVON CAMPBELL.
+
+      ******************************************************************
+       ENVIRONMENT DIVISION.
+      *  DEFINES THE EXTERNAL FILES - AN INPUT FILE AND OUTPUT FILE
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+
+           SELECT COMM-FILE ASSIGN TO DATAIN
+              FILE STATUS IS EF-STATUS.
+
+           SELECT REPORT-FILE ASSIGN TO DATAOUT
+              FILE STATUS IS PF-STATUS.
+
+       DATA DIVISION.
+      * HAS TWO SECTIONS - THE FILE SECTION THAT DESCRIBES THE FILES
+      * AND THE WORKING STORAGE SECTION - WHERE OUTPUT LINES AND
+      * PROCESSING VARIABLES ARE DEFINED
+
+       FILE SECTION.
+
+       FD COMM-FILE.
+      * this defines the structure of the input-file
+       01 COMM-RECORD.
+               05 SALESPERSON-IN           PIC X(24).
+               05 SALES-IN                 PIC 99999.
+               05 FILLER                   PIC X(51).
+      *****************************************************************
+      *  (note that comments MUST have an asterisk in column 7
+      *****************************************************************
+
+       FD REPORT-FILE.
+       01 REPORT-RECORD                PIC X(80).
+      * this defines an output file (in this case 80 bytes long)
+
+       WORKING-STORAGE SECTION.
+      * defines processing variables and output lines
+       01  FLAGS-AND-ACCUMULATORS.
+               05  END-OF-FILE             PIC XXX VALUE "NO".
+               05  COMMISSION              PIC 99999V99.
+               05  COMMISSION-RATE         PIC V999 VALUE .050.
+               05  TOTAL-COMMISSION        PIC 999999V99 VALUE ZEROS.
+               05  EF-STATUS               PIC 99.
+               05  PF-STATUS               PIC 99.
+
+       01  REPORT-BLANK-LINE.
+               05                          PIC X(80).
+
+       01  HEADING-LINE-1.
+               05                          PIC X(27) VALUE SPACES.
+               05                          PIC X(25) VALUE
+                   "DEVTECH ENTERPRISES".
+      * (change the heading to be your name/company)
+
+       01  HEADING-LINE-2.
+               05                          PIC X(27) VALUE SPACES.
+               05                          PIC X(19) VALUE
+                     "ST JOSEPH, MISSOURI".
+
+       01  HEADING-LINE-3.
+               05                          PIC X(28) VALUE SPACES.
+               05                          PIC X(17) VALUE
+                     "COMMISSION REPORT".
+
+       01  COLUMN-HEADING.
+           05                          PIC X(03) VALUE SPACES.
+           05                          PIC X(27) VALUE "SALESPERSON".
+           05                          PIC X(9)  VALUE "SALES".
+           05                          PIC X(03) VALUE SPACES.
+           05                          PIC X(10) VALUE "COMMISSION".
+
+       01  DETAIL-LINE.
+           05                          PIC X(03) VALUE SPACES.
+           05  SALESPERSON-OUT         PIC X(24).
+           05                          PIC X(03) VALUE SPACES.
+           05  SALES-OUT               PIC $$$,$$9.
+           05                          PIC X(04) VALUE SPACES.
+           05  COMMISSION-OUT          PIC $$$,$$9.99.
+
+       01  TOTAL-LINE.
+           05                          PIC X(03) VALUE SPACES.
+           05                          PIC X(20) VALUE
+                     "TOTAL COMMISSION:".
+           05                          PIC X(19) VALUE SPACES.
+           05  TOTAL-COMMISSION-OUT    PIC $$$,$$9.99.
+      *****************************************************************
+      *  DETAIL-LINE comments.
+      *   on the detail line we are writing out the payroll information
+      *   in particular, when we write out the hours-worked, rate-of-pay
+      *   and the gross-pay, we use actual decimal points and also we
+      *   will zero suppress any leading zeros. (and with gross-pay-out
+      *   we are printing a comma if the value is over 1000).
+      *
+      *   We need to use different variable names not to confuse COBOL,
+      *   so names like FIRST-NAME-OUT is used here and FIRST-NAME-IN
+      *   is used in the data file and we will move first-name-in to
+      *   first-name-out when we process the data
+      *****************************************************************
+
+       PROCEDURE DIVISION.
+      * finally - where the real work gets done
+      * it is divided into paragraphs (or modules) generally called
+      * from the main controlling module (here 1000-MAIN-CONTROL).
+      *
+      * note - we will use this structure for most of our programs!
+      * for lab2 you may want to open this and then "save as" lab2.cbl
+      * I normally USE
+      * 1000-main be the control module,
+      * 2000-initialize
+      * 3000-Process and
+      * 4000-Terminate - although this may vary
+      *
+       1000-MAIN-CONTROL.
+           PERFORM 2000-INITIALIZE.
+           PERFORM UNTIL END-OF-FILE = "YES"
+             READ COMM-FILE
+                 AT END
+                   MOVE "YES" TO END-OF-FILE
+                 NOT AT END
+                   PERFORM 3000-PROCESS
+             END-READ
+           END-PERFORM
+           PERFORM 4000-TERMINATE.
+           STOP RUN.
+
+       2000-INITIALIZE.
+               OPEN INPUT COMM-FILE.
+               OPEN OUTPUT REPORT-FILE.
+
+               WRITE REPORT-RECORD        FROM HEADING-LINE-1.
+               WRITE REPORT-RECORD        FROM HEADING-LINE-2.
+               WRITE REPORT-RECORD        FROM HEADING-LINE-3.
+               WRITE REPORT-RECORD        FROM REPORT-BLANK-LINE.
+               WRITE REPORT-RECORD        FROM COLUMN-HEADING.
+               WRITE REPORT-RECORD        FROM REPORT-BLANK-LINE.
+
+       3000-PROCESS.
+      * first calculate the commission
+               MULTIPLY SALES-IN BY COMMISSION-RATE
+                   GIVING COMMISSION.
+
+               ADD COMMISSION TO TOTAL-COMMISSION.
+
+      * now we have to move both the input and calculated data
+      * to set up the detail line.
+
+           MOVE SALESPERSON-IN        TO SALESPERSON-OUT.
+           MOVE SALES-IN              TO SALES-OUT.
+           MOVE COMMISSION            TO COMMISSION-OUT.
+           MOVE TOTAL-COMMISSION      TO TOTAL-COMMISSION-OUT.
+
+           WRITE REPORT-RECORD        FROM DETAIL-LINE.
+
+       4000-TERMINATE.
+           WRITE REPORT-RECORD        FROM REPORT-BLANK-LINE.
+           WRITE REPORT-RECORD        FROM TOTAL-LINE.
+
+           CLOSE COMM-FILE, REPORT-FILE.
+
+           WRITE REPORT-RECORD.
